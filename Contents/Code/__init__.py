@@ -102,6 +102,7 @@ class NaverMusicAgent(Agent.Artist):
 
     #metadata.title = html.xpath('//span[@class="txt"]')[0].text
     #metadata.title = html.xpath('//meta[@property="og:title"]')['content']
+    #metadata.title = html.xpath('//meta[@property="og:title"]')[0].get("content")
     tmp = html.xpath('//meta[@property="og:title"]')[0].get("content")
     metadata.title = tmp.split('::')[1].strip() if tmp.find('::') != -1 else tmp
     Log.Debug('Artist Title: ' + metadata.title)
@@ -283,12 +284,12 @@ class NaverMusicAlbumAgent(Agent.Album):
       for i in range(0, len(common)):
         metadata.summary = summary
         summary += common[i].strip() + ' : ' 
-  metadata.summary = summary
+        metadata.summary = summary
         xpath_str = '//dl[@class="desc"]//dd[%d]/a/text()' % (i+1)
         temp = html.xpath(xpath_str)
         if 0 == len(temp): summary += common2[i+1].strip()
         else: summary += ','.join(temp)
-  metadata.summary = summary
+        metadata.summary = summary
         summary += '\n'
       
       summary += '\n'
