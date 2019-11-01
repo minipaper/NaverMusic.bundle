@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import urllib, unicodedata, json, difflib
+import urllib, unicodedata, json, difflib, ssl
 
 BASE_URL = 'http://music.naver.com'
 
@@ -20,6 +20,10 @@ VARIOUS_ARTISTS_POSTER = 'http://userserve-ak.last.fm/serve/252/46209667.png'
 RE_ARTIST_ID = Regex('artistId=(\d+)')
 RE_ALBUM_ID = Regex('albumId=(\d+)')
 RE_ALBUM_RATING = Regex(u'평점'+' (.*?)'+u'점')
+
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
 
 def Start():
   HTTP.CacheTime = CACHE_1WEEK
@@ -176,7 +180,7 @@ class NaverMusicAgent(Agent.Artist):
     #    metadata.art[img_url] = Proxy.Preview(HTTP.Request(thumb), sort_order=(i+1))
     
     params = urllib.urlencode({'page': 1, 'artistId': metadata.id, 'musicianId': -1})
-    r = urllib.urlopen("http://music.naver.com/artist/photoListJson.nhn", params).read()
+    r = urllib.urlopen("http://music.naver.com/artist/photoListJson.nhn", params, context=ctx).read()
     r = r.replace('thumbnail', '"thumbnail"')
     r = r.replace('original', '"original"')
     data = json.loads(r)
