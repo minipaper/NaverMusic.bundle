@@ -165,6 +165,7 @@ class NaverMusicAlbumAgent(Agent.Album):
             media_name = media.parent_metadata.title + ' '
             for no, track in media.tracks.items():
                 media_name += ' ' + track.title
+                break
 
         try: 
             searches = [media_name, re.sub('\s?[\[\(].*?[\]\)]\s?', '', media_name)]
@@ -304,14 +305,14 @@ class NaverMusicAlbumAgent(Agent.Album):
         except:
             Log(traceback.format_exc())
 
-        try:    
+        try:                     
             tracks = html.xpath('//*[@id="content"]/div[2]/div[2]/table/tbody/tr')
             summary += 'Tracks\n'
             for t in tracks[1:]:
                 try:
                     summary += '%s - %s\n' % (t.xpath('td[@class="order"]/text()')[0], t.xpath('td[@class="name"]')[0].text_content().strip())
                 except:
-                    pass
+                    Log(traceback.format_exc())
             metadata.summary = summary
         except:
             Log(traceback.format_exc())
