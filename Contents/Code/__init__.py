@@ -11,7 +11,7 @@ ARTIST_INFO_URL = BASE_URL + '/artist/intro.nhn?artistId=%s'
 
 ARTIST_ALBUM_URL = BASE_URL + '/artist/album.nhn?artistId=%s'
 ARTIST_ALBUM_URL2 = BASE_URL + '/artist/album.nhn?artistId=%s&page=2'
-ARTIST_PHOTO_URL = BASE_URL + '/artist/photo.nhn?artistId=%s'
+ARTIST_PHOTO_URL = BASE_URL + '/artist/photoListJson.nhn?artistId=%s'
 
 ALBUM_SEARCH_URL = BASE_URL + '/search/search.nhn?query=%s&target=album'
 ALBUM_INFO_URL = BASE_URL + '/album/index.nhn?albumId=%s'
@@ -128,6 +128,17 @@ class NaverMusicAgent(Agent.Artist):
             if i > 3:
                 break
 
+        if Prefs['artwork']:
+            url = ARTIST_PHOTO_URL % metadata.id
+            try: 
+                data = JSON.ObjectFromURL(url)
+                max_count = int(Prefs['artwork_count'])
+                for i, pic in enumerate(data['photoList']):
+                    metadata.art[pic['original']] = Proxy.Preview(HTTP.Request(pic['thumbnail']), sort_order=(i+1))
+                    if i >= max_count:
+                        break
+            except:
+                raise Ex.MediaExpired
 
 
 ########################################################################  
@@ -255,8 +266,8 @@ class NaverMusicAlbumAgent(Agent.Album):
                 metadata.genres.add(genre.strip())
         except:
             Log(traceback.format_exc())
-        #Log(metadata.album)
-        #Log(metadata.name)
+        
+
 
 ########################################################################  
 def SearchArtists(artist):
