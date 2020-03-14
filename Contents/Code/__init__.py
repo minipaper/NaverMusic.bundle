@@ -152,13 +152,13 @@ class NaverMusicAlbumAgent(Agent.Album):
             return
 
         # Search for album.
-        #if manual:
-        #    Log('Running custom search...')
-        #    # Added 2016.3.25
-        #    #media_name = unicodedata.normalize('NFKC', unicode(media.name)).strip()
-        #else:
-        #    media_name = media.title
-        media_name = media.title
+        if manual:
+            Log('Running custom search...')
+            # Added 2016.3.25
+            media_name = unicodedata.normalize('NFKC', unicode(media.name)).strip()
+        else:
+            media_name = media.title
+        #media_name = media.title
         media_name = re.sub(r'\s?\[.*?\]\s?', '', media_name)
         Log('Album search: ' + media_name)
 
