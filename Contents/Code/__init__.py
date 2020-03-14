@@ -155,26 +155,82 @@ class NaverMusicAlbumAgent(Agent.Album):
         if manual:
             Log('Running custom search...')
             # Added 2016.3.25
+            if media.name is not None:
+                media_name = unicodedata.normalize('NFKC', unicode(media.name)).strip()
+            else:
+                media_name = media.title
+        else:
+            # 태그로 하지 않는다
+            media_name = media.parent_metadata.title + ' '
+            for no, track in media.tracks.items():
+                media_name += ' ' + track.title
+
+        try: 
+            searches = [media_name, re.sub('\s?[\[\(].*?[\]\)]\s?', '', media_name)]
+            Log(media_name)
+            Log(searches[1])
+            for search in searches:
+                search = String.Quote(search.encode('utf-8'))
+                url = 'https://music.naver.com/search/search.nhn?query=%s&target=album' % search
+                Log(url)
+                html = HTML.ElementFromURL(url)
+                tags = html.xpath('//*[@id="content"]/div[3]/ul')
+                find_flag = False
+                if tags:
+                    for idx, node in enumerate(tags):
+                        tmp = node.xpath('li/dl/dd/a')
+                        if len(tmp) > 0 and media.parent_metadata.id == tmp[0].attrib['href'].split('=')[1]:
+                            score = 100
+                        else:
+                            score = 80
+                            #Log(media.parent_metadata.id)
+                            #Log(node.xpath('li/dl/dd/a')[0].attrib['href'].split('=')[1])
+                            #continue
+                        title = node.xpath('li/dl/dt/a/text()')[0]
+                        if title.find(u'반주') == -1:
+                            find_flag = True
+                            results.Append( MetadataSearchResult(
+                                id=node.xpath('li/div/a')[0].attrib['href'].split('=')[1], 
+                                name=title, 
+                                lang=lang, score=score- (idx*5)) )
+                    if find_flag:
+                        return
+
+            for search in searches:
+                search = String.Quote(search.encode('utf-8')) 
+                # 곡 첫 트랙 앨범
+                url = 'https://music.naver.com/search/search.nhn?query=%s&target=track' % search
+                html = HTML.ElementFromURL(url)
+                tags = html.xpath('//*[@id="content"]/div[3]/div[3]/table/tbody/tr[2]/td[5]/a')
+                if tags:
+                    results.Append( MetadataSearchResult(
+                            id=tags[0].attrib['href'].split('=')[1], 
+                            name=tags[0].text_content().strip(), 
+                            lang=lang, score=100) )
+                    return
+        except:
+            Log(traceback.format_exc())
+            raise Ex.MediaExpired
+        
+        
+        if manual:
+            Log('Running custom search...')
             media_name = unicodedata.normalize('NFKC', unicode(media.name)).strip()
         else:
             media_name = media.title
-        #media_name = media.title
+
         media_name = re.sub(r'\s?\[.*?\]\s?', '', media_name)
         Log('Album search: ' + media_name)
-
-        #albums = self.score_albums(media, lang, SearchAlbums(media.artist, media.title))
-        #albums = self.score_albums(media, lang, SearchAlbums(unicode(media.parent_metadata.title), media.title))
         Log('%s - %s', unicode(media.parent_metadata.title), media_name)
         albums = self.score_albums(media_name, lang, SearchAlbums(unicode(media.parent_metadata.title), media_name))
         Log('Found ' + str(len(albums)) + ' albums...')
-
         for album in albums:
             results.Append( MetadataSearchResult(id=album['id'], name=album['name'], lang=album['lang'], score=album['score']) )
 
         if len(albums) > 0:
             return
-
         Log('2nd try...')
+        Log(media.tracks)
         albums = self.score_albums(media_name, lang, GetAlbumsByArtist(media.parent_metadata.id), legacy=True)
         Log('Found ' + str(len(albums)) + ' albums...')
 
@@ -192,6 +248,7 @@ class NaverMusicAlbumAgent(Agent.Album):
             albums[i]['lang'] = lang
             Log.Debug('id: %s name: %s score: %d lang: %s' % (id, name, score, lang))
         return albums
+
 
     def update(self, metadata, media, lang):
         Log.Debug('query album: '+metadata.id)
@@ -243,15 +300,21 @@ class NaverMusicAlbumAgent(Agent.Album):
                 metadata.studio = common2[4].strip()
             except:
                 pass
+        except:
+            Log(traceback.format_exc())
 
+        try:    
             tracks = html.xpath('//*[@id="content"]/div[2]/div[2]/table/tbody/tr')
             summary += 'Tracks\n'
             for t in tracks[1:]:
-                summary += '%s - %s\n' % (t.xpath('td[@class="order"]/text()')[0], t.xpath('td[@class="name"]')[0].text_content().strip())
+                try:
+                    summary += '%s - %s\n' % (t.xpath('td[@class="order"]/text()')[0], t.xpath('td[@class="name"]')[0].text_content().strip())
+                except:
+                    pass
             metadata.summary = summary
-
         except:
             Log(traceback.format_exc())
+        
 
         # poster
         img_url = html.xpath('//meta[@property="og:image"]')[0].get('content')
@@ -289,29 +352,12 @@ def SearchArtists(artist):
             pass
     return artists
 
-def SearchAlbums(artist, album):
-    if artist in album:
-        q_str = album
-    elif artist == 'None':
-        q_str = album  
-    else:
-        q_str = album+' '+artist
 
-    url = ALBUM_SEARCH_URL % String.Quote(q_str.encode('utf-8'))
-    try: 
-        html = HTML.ElementFromURL(url)
-    except:
-        raise Ex.MediaExpired
-
-    album = []
-    for node in html.xpath('//dt/a'):
-        id = RE_ALBUM_ID.search(node.get('href')).group(1)
-        album.append({'id':id, 'name':node.get('title')})
-    return album
-
-
-def GetAlbumsByArtist(artist, albums=[]):
+def GetAlbumsByArtist(artist):
+    albums=[]
     url = ARTIST_ALBUM_URL % artist
+    Log('xxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+    Log(url)
     try: 
         html = HTML.ElementFromURL(url)
     except:
@@ -336,6 +382,26 @@ def GetAlbumsByArtist(artist, albums=[]):
     return album
 
 
+def SearchAlbums(artist, album):
+    if artist in album:
+        q_str = album
+    elif artist == 'None':
+        q_str = album  
+    else:
+        q_str = album+' '+artist
+
+    url = ALBUM_SEARCH_URL % String.Quote(q_str.encode('utf-8'))
+    try: 
+        html = HTML.ElementFromURL(url)
+    except:
+        raise Ex.MediaExpired
+
+    album = []
+    for node in html.xpath('//dt/a'):
+        id = RE_ALBUM_ID.search(node.get('href')).group(1)
+        album.append({'id':id, 'name':node.get('title')})
+    return album
+
 """
 def score_artists(self, media, lang, artists):
     for i, artist in enumerate(artists):
@@ -354,4 +420,6 @@ def score_artists(self, media, lang, artists):
         artists[i]['lang'] = lang
         Log.Debug('id: %s name: %s score: %d lang: %s' % (id, name, score, lang))
     return artists
+
+    
 """
