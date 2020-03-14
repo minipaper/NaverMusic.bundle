@@ -73,6 +73,7 @@ class NaverMusicAgent(Agent.Artist):
             raise Ex.MediaExpired
 
         metadata.title = html.xpath('//meta[@property="og:title"]')[0].get("content").replace(u'네이버뮤직 :: ', '').strip()
+        metadata.title_sort = unicodedata.normalize('NFKD', metadata.title)
         Log.Debug('Artist Title: ' + metadata.title)
     
         try:
@@ -356,8 +357,6 @@ def SearchArtists(artist):
 def GetAlbumsByArtist(artist):
     albums=[]
     url = ARTIST_ALBUM_URL % artist
-    Log('xxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-    Log(url)
     try: 
         html = HTML.ElementFromURL(url)
     except:
