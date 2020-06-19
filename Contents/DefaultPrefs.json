@@ -4,5 +4,11 @@
     "label": "use Photo as Artwork",
     "type": "bool",
     "default": "false"
+  },
+  {
+    "id": "artwork_count",
+    "label": "max art count",
+    "type": "text",
+    "default": "50"
   }
 ]
